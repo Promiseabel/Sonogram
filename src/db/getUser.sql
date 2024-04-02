@@ -1,0 +1,12 @@
+DELIMITER // 
+
+DROP PROCEDURE IF EXISTS GetUser // 
+
+CREATE PROCEDURE GetUser(IN p_user_id BIGINT UNSIGNED)
+BEGIN
+    SELECT * 
+    FROM users
+    WHERE user_id = p_user_id;
+END//
+
+DELIMITER ;

@@ -133,7 +133,7 @@ const SignUpForm = {
             return true;
         },
         validatePassword() {
-            if (this.newPassword !== this.confirmPassword) {
+            if (this.password !== this.confirmPassword) {
                 this.errorMessage = 'Passwords do not match.';
                 return false;
             }

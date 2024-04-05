@@ -12,6 +12,15 @@ import os
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import re
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
+import ssl
+from flask_wtf.csrf import CSRFProtect
+
+# Define SSL certificate and key file paths 
+CERT_FILE = "ssl/cert.pem" 
+KEY_FILE = "ssl/key.pem" 
 
 app = Flask(__name__)
 # Set Server-side session config: Save sessions in the local app directory.
@@ -32,6 +41,35 @@ app.config['IMAGE_UPLOAD_FOLDER'] = IMAGE_UPLOAD_FOLDER
 app.config['AUDIO_UPLOAD_FOLDER'] = AUDIO_UPLOAD_FOLDER
 
 app.jinja_env.autoescape = True
+
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address, 
+    default_limits=["500 per day", "100 per hour"]
+)
+
+csp = {
+    'default-src': [
+        '\'self\'',
+    ],
+	'script-src': [
+        '\'self\'',
+        'https://cdn.jsdelivr.net',
+		'\'unsafe-eval\'',  # For Vue.js and Axios
+    ],
+    'style-src': [
+        '\'self\'',
+        'https://fonts.googleapis.com',  # For Google Fonts
+    ],
+    'font-src': [
+        'https://fonts.gstatic.com',  # For Google Fonts
+    ],
+}
+talisman = Talisman(app, content_security_policy=csp)
+
+csrf = CSRFProtect(app)
+
+failed_attempts = {}
 
 ####################################################################################
 #
@@ -146,7 +184,6 @@ class SignUp(Resource):
 		return make_response(jsonify(response), responseCode)
 
 
-
 class SignIn(Resource):
 	#
 	# Set Session and return Cookie
@@ -155,7 +192,6 @@ class SignIn(Resource):
 	# curl -i -H "Content-Type: application/json" -X POST -d '{"username": "<your_name>", "password": "<your_pass>"}' -c cookie-jar -k http://localhost:8080/signin
 	#
 	def post(self):
-		user_data = request.json
 		
 		if not request.json:
 			abort(400) # bad request
@@ -175,6 +211,10 @@ class SignIn(Resource):
 			responseCode = 200
 		else:
 			try:
+				print('success')
+				# Check if account is locked
+				if failed_attempts.get(request_params['username'], 0) >= 5:
+					abort(403, "Account locked. Try again later.")		
 				
 				dbConnection = pymysql.connect(
 					host=settings.MYSQL_HOST,
@@ -202,6 +242,8 @@ class SignIn(Resource):
 					response = {'status': 'Signed In'}
 					responseCode = 201
 
+					failed_attempts[request_params['username']] = 0
+
 					return make_response(jsonify(response), responseCode)
 
 				else:
@@ -211,6 +253,7 @@ class SignIn(Resource):
 				# User is authenticated
 
 			except Exception as e:
+				print('fail')
 				print(e)
 				response = {'status': 'Something Went Wrong'}
 				print(response)
@@ -260,6 +303,7 @@ class User(Resource):
 	# curl -i -H "Content-Type: application/json" -X PUT -d '{"username": "<your_name>","password": "<your_password>", "email_address": "<your_email>", "bio":"<your_bio>", "profile_picture": "<profile_picture>"}' -b cookie-jar -k http://localhost:8080/users/{id}
 	#
 	def put(self, user_id):
+		print('success')
 		# Update user information
 		if 'user_id' in session:
 			# if username is in session and the username in session is equal to current username then allow update
@@ -277,7 +321,7 @@ class User(Resource):
 		# Validate user data
 		if 'username' not in user_data or len(user_data['username']) > 25:
 			abort(400, 'Username cannot be more than 25 characters.')
-
+		
 		# Validate email
 		if 'email_address' not in user_data or not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', user_data['email_address']) or len(user_data['email_address']) > 255:
 			abort(400, 'Invalid email address.')
@@ -287,6 +331,7 @@ class User(Resource):
 			abort(400, 'Bio cannot be more than 255 characters.')
 
 		filename = "default.jpeg"
+
 
 		if 'profile_picture' in request.files:
 			file = request.files['profile_picture']
@@ -795,4 +840,6 @@ api.add_resource(AudioFile, '/audios/<int:audio_id>')
 #############################################################################
 # xxxxx= last 5 digits of your studentid. If xxxxx > 65535, subtract 30000
 if __name__ == "__main__":
-   	app.run(host=settings.APP_HOST, port=settings.APP_PORT, debug=settings.APP_DEBUG)
+	context = (CERT_FILE, KEY_FILE)
+	#app.run(host=settings.APP_HOST, ssl_context=context, port=settings.APP_PORT, debug=settings.APP_DEBUG)
+	app.run(host=settings.APP_HOST, port=settings.APP_PORT, debug=settings.APP_DEBUG)

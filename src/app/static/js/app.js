@@ -1,3 +1,7 @@
+window.axios.defaults.headers.common = {
+  'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+  'X-Requested-With': 'XMLHttpRequest'
+};
 const SignInForm = {
     template: `
     <div>
@@ -13,6 +17,7 @@ const SignInForm = {
             </div>
             <button type="submit">Sign In</button>
             <button @click="$emit('change-screen', 'welcome')">Back</button>
+            
         </form>
         <div v-if="errorMessage">{{ errorMessage }}</div>
     </div>
@@ -83,6 +88,7 @@ const SignUpForm = {
             </div>
             <button type="submit">Create Account</button>
             <button @click="$emit('change-screen', 'welcome')">Back</button>
+            
         </form>
         <div v-if="errorMessage">{{ errorMessage }}</div>
     </div>
@@ -362,6 +368,7 @@ const HomePage = {
                 <input type="file" id="audioFile" @change="handleFileChange" accept="audio/*" required>
             </div>
             <button type="submit">Upload Audio</button>
+            
             </form>
         </div>
         <div class="audio-list">
@@ -525,6 +532,7 @@ const UpdateForm = {
             </div>
             <button type="submit">Save Information</button>
             <button @click="$emit('change-screen', 'user-profile', userId)">Back</button>
+            
         </form>
         <button style="display: block; margin: auto;" @click="showPasswordUpdateForm = !showPasswordUpdateForm">Update Password</button>
 
@@ -543,6 +551,7 @@ const UpdateForm = {
                     <input type="password" id="confirmPassword" v-model="confirmPassword" required>
                 </div>
                 <button type="submit">Submit New Password</button>
+                
             </form>
         </div>
         <div v-if="errorMessage">{{ errorMessage }}</div>
@@ -691,9 +700,9 @@ new Vue({
                     this.currentScreen = 'home-page';
                 })
                 .catch(error => {
-                    console.error("Not Signed in:", error);
                     this.currentScreen = 'welcome';
                 });
         }
     }
 });
+

@@ -1,5 +1,5 @@
 window.axios.defaults.headers.common = {
-  'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+  'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
   'X-Requested-With': 'XMLHttpRequest'
 };
 const SignInForm = {
